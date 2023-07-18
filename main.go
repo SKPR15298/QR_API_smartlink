@@ -118,6 +118,7 @@ func generateQRCode(w http.ResponseWriter, r *http.Request) {
 	labelContext.SetDst(labelImg)
 	labelContext.SetSrc(image.White)
 
+	//add conditional
 	condition := len(labelText) * 2
 	// Create the context for drawing text
 	labelX := ((labelWidth / 2) - (len(labelText) * 7)) + (len(labelText)-condition)*3
