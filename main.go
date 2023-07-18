@@ -22,7 +22,7 @@ const (
 	logoFile      = "smartlink-logo.png"
 	outputFile    = "SmartQR.png"
 	labelWidth    = 1024
-	labelHeight   = 85
+	labelHeight   = 80
 	labelFontSize = 30.0
 )
 
@@ -118,22 +118,25 @@ func generateQRCode(w http.ResponseWriter, r *http.Request) {
 	labelContext.SetDst(labelImg)
 	labelContext.SetSrc(image.White)
 
+	condition := len(labelText) * 2
 	// Create the context for drawing text
-	labelX := (labelWidth - len(labelText)*10 + 600) / 5
+	labelX := ((labelWidth / 2) - (len(labelText) * 7)) + (len(labelText)-condition)*3
 	labelY := labelHeight - int(labelFontSize)
 
-	// Calculate the width of the label text
-	labelTextWidth := int(labelContext.PointToFixed(labelFontSize) >> 6)
-
 	// Calculate the width of the background fill
-	fillWidth := labelTextWidth + 10
+	fillWidth := labelWidth
 
 	// Calculate the spacing
-	spacing := 0
-	labelAndSpacingHeight := labelHeight + spacing
+	labelAndSpacingHeight := labelHeight
+
+	// Calculate the horizontal position for the background fill
+	fillX := (labelWidth - fillWidth) / 2
+
+	// Calculate the vertical position for the background fill
+	fillY := qrImg.Bounds().Max.Y - labelAndSpacingHeight - labelHeight
 
 	// Draw the background fill below the label text
-	fillRect := image.Rect(labelX-10, qrImg.Bounds().Max.Y-labelAndSpacingHeight, labelX-10+fillWidth, qrImg.Bounds().Max.Y)
+	fillRect := image.Rect(fillX, fillY, fillX+fillWidth, qrImg.Bounds().Max.Y)
 	draw.Draw(labelImg, fillRect, &image.Uniform{C: backgroundColor}, image.ZP, draw.Src)
 
 	// Set the starting position of the text
@@ -146,9 +149,6 @@ func generateQRCode(w http.ResponseWriter, r *http.Request) {
 	// Calculate the new height for the qrImg bounds
 	newHeight := qrImg.Bounds().Dy() + labelAndSpacingHeight
 
-	// Increase the newHeight to accommodate the label
-	newHeight += 80
-
 	// Create a new rectangle with the updated height
 	newBounds := image.Rect(qrImg.Bounds().Min.X, qrImg.Bounds().Min.Y, qrImg.Bounds().Max.X, newHeight)
 
@@ -158,8 +158,8 @@ func generateQRCode(w http.ResponseWriter, r *http.Request) {
 	// Copy the qrImg to the new image
 	draw.Draw(newQrImg, qrImg.Bounds(), qrImg, image.Point{}, draw.Src)
 
-	// Overlay the resized logo and label on the QR code image with increased spacing
-	qrWithLabel := imaging.Overlay(newQrImg, labelImg, image.Pt(0, qrImg.Bounds().Dy()), 1.0)
+	// Overlay the resized logo on the QR code image with increased spacing
+	qrWithLogoAndLabel := imaging.Overlay(newQrImg, labelImg, image.Pt(0, qrImg.Bounds().Dy()), 1.0)
 
 	// Create a temporary directory if it doesn't exist
 	if _, err := os.Stat(tempDir); os.IsNotExist(err) {
@@ -172,7 +172,7 @@ func generateQRCode(w http.ResponseWriter, r *http.Request) {
 
 	// Save the QR code image to a temporary file
 	outputPath := filepath.Join(tempDir, outputFile)
-	err = imaging.Save(qrWithLabel, outputPath)
+	err = imaging.Save(qrWithLogoAndLabel, outputPath)
 	if err != nil {
 		http.Error(w, "Failed to save QR code image", http.StatusInternalServerError)
 		return
